@@ -121,6 +121,51 @@ def segment_chemical_structures(
 
     return segments
 
+def segment_chemical_structures_with_labels(
+    image: np.array,
+    expand: bool = True,
+    visualization: bool = False,
+) -> List[np.array]:
+    """
+    This function runs the segmentation model as well as the mask expansion
+    -> returns a List of segmented chemical structure depictions (np.array)
+
+    Args:
+        image (np.array): image of a page from a scientific publication
+        expand (bool): indicates whether or not to use mask expansion
+        visualization (bool): indicates whether or not to visualize the
+                                results (only works in Jupyter notebook)
+
+    Returns:
+        List[np.array]: expanded segments sorted in top->bottom, left->right order with
+        a certain tolerance for grouping into "lines"(shape: (h, w, num_masks))
+    """
+    if not expand:
+        masks, bboxes, _ = get_mrcnn_results(image)
+    else:
+        masks = get_expanded_masks(image)
+
+    segments, bboxes = apply_masks(image, masks)
+
+
+    if len(segments) > 0:
+        segments, bboxes = sort_segments_bboxes(segments, bboxes)
+
+    segments = [segment for segment in segments
+                if segment.shape[0] > 0
+                if segment.shape[1] > 0]
+
+    if visualization:
+        visualize.display_instances(
+            image=image,
+            masks=masks,
+            class_ids=np.array([0] * len(bboxes)),
+            boxes=np.array(bboxes),
+            class_names=np.array(["structure"] * len(bboxes)),
+        )
+        
+    return segments
+
 
 def determine_depiction_size_with_buffer(
     bboxes: List[Tuple[int, int, int, int]]
